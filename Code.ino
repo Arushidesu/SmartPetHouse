@@ -1,12 +1,10 @@
-#include <Wire.h>
+#include <Wire.h>          //Biblioteca de hora do sistema
 #include <LiquidCrystal.h> //Carrega a biblioteca LiquidCrystal
-//#include <DS1307.h>        //Carrega a biblioteca do RTC
-//#include <DS1307RTC.h>
-#include "RTClib.h"
-//#include <Time.h>        //
+#include "RTClib.h"        //Carrega a biblioteca do RTC
 #include <Servo.h>         //Carrega a biblioteca do servo
 
 LiquidCrystal lcd(12, 11, 5, 4, 3, 2); //Define os pinos que serão utilizados para ligação ao display
+Servo servo;                           //Cria um servo de nome servo
 
 bool active = false;     //Condição do botão de troca
 const int botao = 52;    //Botão para troca de horários (aumento)
@@ -23,11 +21,12 @@ int estado = 0;          //Leitura do estado do botão de aumento dos horários
 int estado1 = 0;         //Leitura do estado do botão de decremento dos horários
 
 
-RTC_DS1307 rtc;    // cria um RTC_DS1307 chamado rtc
+RTC_DS1307 rtc;    // Cria um RTC_DS1307 chamado rtc
 
+//Array com os dias da semana
 char daysOfTheWeek[7][14] = {"Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sabado"};
-//a linha acima é um array com os dias da semana
 
+//Adicionar um 0 nos horários
 String zero(int n){ //função que verifica se o numero é menor
                     //que dez, e se for adiciona o 0 antes
   if(n < 10){       //Exemplo: entra 5, sai 05-> 00:05:00
@@ -37,18 +36,19 @@ String zero(int n){ //função que verifica se o numero é menor
   }
 }
 
-int a = 0;
-
 void printTime(){
-  DateTime now = rtc.now();  //variavel now do tipo DateTime e define ela como a hora do rtc
+  DateTime now = rtc.now();  //Variável now do tipo DateTime e define ela como a hora do RTC
+
+  //Imprime as informações: dia da semana, dia/mês/ano - hh:mm:ss
   Serial.print(String(daysOfTheWeek[now.dayOfTheWeek()]) + ", " + zero(now.day()) + "/" + zero(now.month()) + "/" + now.year());
   Serial.print(" - ");
   Serial.println(zero(now.hour()) + ":" + zero(now.minute()) + ":" + zero(now.second()));
-  //as três linhas de cima imprimem as informações: dia da semana, dia/mês/ano - hh:mm:ss
 }
 
 void setup() {
   lcd.begin(16, 2); //Define o número de colunas e linhas do LCD
+
+  servo.attach(10); //Pino digital do servo
   
   //Seta os botões como entrada
   pinMode(botao, INPUT);
@@ -58,30 +58,31 @@ void setup() {
   pinMode(botao3, INPUT);
   pinMode(botao33, INPUT); 
 
-  Serial.begin(9600);
-  if(!rtc.begin()){  //se !(nao) iniciar o rtc imprime a mensagem.
-    Serial.println("RTC nao encontrado.");
+  Serial.begin(9600); //Inicia o monitor serial
+
+  //Se !(not) iniciar o RTC imprime a mensagem
+  if(!rtc.begin()){  
+    Serial.println("RTC não encontrado.");
     while(1);
   }
   
-  //rtc.adjust é a função que envia a data e hora para o rtc:
-  rtc.adjust(DateTime(2017, 10,  18, 14, 58, 15)); //descomente essa linha para alterar a hora do RTC!
-  
-  if(!rtc.isrunning()){  //se o rtc !(nao) estiver funcionando, ajusta ele com a
-    Serial.println("RTC nao esta funcionando!");  //data e hora da compilação do sketch
-    Serial.println("teste");
-    //rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+  //rtc.adjust é a função que envia a data e hora para o RTC:
+  //rtc.adjust(DateTime(2017, 10,  18, 14, 58, 15)); //descomente essa linha para alterar a hora do RTC!
+
+  //Condição caso o RTC não esteja funcionando
+  if(!rtc.isrunning()){
+    Serial.println("RTC nao esta funcionando!");  
+    rtc.adjust(DateTime(F(__DATE__), F(__TIME__))); //Data e hora da compilação do sketch
   }
 }
 
 void loop() {
+  
+  printTime(); //Executa a função para imprimir no serial monitor
+  DateTime now = rtc.now();  //Variável now do tipo DateTime e define ela como a hora do RTC
 
-  printTime();
-  DateTime now = rtc.now();  //variavel now do tipo DateTime e define ela como a hora do rtc
-
-  Serial.println(now.hour());
-
-  estado = digitalRead(botao); //Leitura do botão na variável
+  //Leitura dos botões nas variáveis
+  estado = digitalRead(botao);
   estado1 = digitalRead(botao1); 
 
   //Condição de troca dos horários (aumento)
@@ -90,9 +91,11 @@ void loop() {
     else if(contador >= 3)
       contador = 0;
 
+  //Condição de troca dos horários (decremento)
   if(estado1 == 1) contador -= 1;
     else if(contador <= -1) contador = 2;
 
+  //Caso a troca dos horários ocorra
   switch(contador) {
 
     //Primeiro caso (Hora 1)
@@ -232,5 +235,11 @@ void loop() {
       lcd.print(three[1]);
       delay(100);
       break;        
- }  
+ }
+
+ //Condição teste para verificar o LCD + RTC
+ if(now.hour() == one[0] and now.minute() == one[1]) {
+  servo.write(180);
+  servo.write(-180);
+ }
 }
