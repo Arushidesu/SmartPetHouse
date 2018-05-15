@@ -1,3 +1,3 @@
 # SmartPetHouse
 
-Um programa simples para definição de horários para uma casa inteligente para pets. 
+A simple program for setting times for a smart home for pets.
